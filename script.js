@@ -373,12 +373,24 @@ function getSlotStockClass(stock) {
     return 'slot-full';
 }
 
+function resolveMax(value) {
+    // ค่าที่ว่างเปล่าหรือไม่ถูกต้องให้ใช้ค่าเริ่มต้น แต่ต้องคงค่า 0 ที่ระบุมาจริง ๆ ไว้
+    if (value === null || value === undefined || String(value).trim() === '') {
+        return MAX_STOCK_PER_SLOT;
+    }
+    const num = Number(value);
+    if (!isFinite(num) || num < 0) {
+        return MAX_STOCK_PER_SLOT;
+    }
+    return num;
+}
+
 function calculateRefillQuantity(stock, max) {
     let safeStock = Number(stock);
     if (isNaN(safeStock) || safeStock < 0) {
         safeStock = 0;
     }
-    const safeMax = Number(max) || MAX_STOCK_PER_SLOT;
+    const safeMax = resolveMax(max);
     if (safeStock >= safeMax) {
         return 0;
     }
@@ -607,7 +619,7 @@ function renderProductRefillSummary() {
         }
         totalSlots++;
         const stock = Number(slot.stock);
-        const max = Number(slot.max) || MAX_STOCK_PER_SLOT;
+        const max = resolveMax(slot.max);
         const refill = calculateRefillQuantity(stock, max);
         const displayStock = (isNaN(stock) || stock < 0) ? 0 : stock;
         if (refill > 0) {
@@ -693,7 +705,7 @@ function renderMachineLayout() {
             }
             const stock = Number(slot.stock);
             const displayStock = (isNaN(stock) || stock < 0) ? 0 : stock;
-            const max = Number(slot.max) || MAX_STOCK_PER_SLOT;
+            const max = resolveMax(slot.max);
             const stockClass = getSlotStockClass(displayStock);
             const shortName = slot.name.length > 20 ? slot.name.substring(0, 20) + '...' : slot.name;
             slotCards.push(
@@ -906,7 +918,7 @@ function parseSlotsSheet(rows) {
             return;
         }
         const stock = Number(row.stock !== undefined ? row.stock : row['คงเหลือ']) || 0;
-        const max = Number(row.max !== undefined ? row.max : row['สูงสุด']) || MAX_STOCK_PER_SLOT;
+        const max = resolveMax(row.max !== undefined ? row.max : row['สูงสุด']);
         slots.push({
             slot: String(slot),
             name: row.name !== undefined ? String(row.name) : (row['ชื่อสินค้า'] || ''),
@@ -1431,7 +1443,7 @@ function buildRefillSheetData() {
         const barcode = product.barcode || '';
         const stock = Number(slot.stock);
         const cleanStock = (isNaN(stock) || stock < 0) ? 0 : stock;
-        const max = Number(slot.max) || MAX_STOCK_PER_SLOT;
+        const max = resolveMax(slot.max);
 
         rows.push([
             masterId,
@@ -1592,7 +1604,7 @@ function exportCsv() {
         const rows = [headers];
         (AppState.slotsData || []).forEach(function (s) {
             const stock = Number(s.stock);
-            const max = Number(s.max) || MAX_STOCK_PER_SLOT;
+            const max = resolveMax(s.max);
             const refill = calculateRefillQuantity(stock, max);
             rows.push([s.slot, s.name, s.price, stock, max, refill, s.dropTest, s.dropTestDate, s.channelStatus, s.rank, s.m, s.gp]);
         });
