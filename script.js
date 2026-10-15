@@ -1773,45 +1773,26 @@ function bindEvents() {
     const clearFiltersEl = $('clear-filters');
     const resetDataEl = $('reset-data');
 
-    if (importTxtEl) {
-        importTxtEl.addEventListener('change', function (e) {
+    function bindImport(el, message, handler) {
+        if (!el) {
+            return;
+        }
+        el.addEventListener('change', function (e) {
             const file = e.target.files[0];
-            if (file) {
-                importTxt(file);
-            }
             e.target.value = '';
+            if (!file) {
+                return;
+            }
+            showConfirm(message, function () {
+                handler(file);
+            });
         });
     }
 
-    if (importXlsxEl) {
-        importXlsxEl.addEventListener('change', function (e) {
-            const file = e.target.files[0];
-            if (file) {
-                importXlsx(file);
-            }
-            e.target.value = '';
-        });
-    }
-
-    if (importCsvEl) {
-        importCsvEl.addEventListener('change', function (e) {
-            const file = e.target.files[0];
-            if (file) {
-                importCsv(file);
-            }
-            e.target.value = '';
-        });
-    }
-
-    if (importJsonEl) {
-        importJsonEl.addEventListener('change', function (e) {
-            const file = e.target.files[0];
-            if (file) {
-                importJson(file);
-            }
-            e.target.value = '';
-        });
-    }
+    bindImport(importTxtEl, 'นำเข้าไฟล์ .txt จะแทนที่ข้อมูลเครื่อง เหรียญ และช่องขายปัจจุบัน ต้องการดำเนินการต่อหรือไม่?', importTxt);
+    bindImport(importXlsxEl, 'นำเข้าไฟล์ .xlsx จะอัปเดตข้อมูลตามชีตที่มีในไฟล์ (แทนที่ข้อมูลเดิมในส่วนนั้น) ต้องการดำเนินการต่อหรือไม่?', importXlsx);
+    bindImport(importCsvEl, 'นำเข้าไฟล์ .csv จะแทนที่ข้อมูลช่องขายหรือสินค้าตามรูปแบบไฟล์ ต้องการดำเนินการต่อหรือไม่?', importCsv);
+    bindImport(importJsonEl, 'นำเข้าไฟล์ .json จะแทนที่ข้อมูลทั้งหมด ต้องการดำเนินการต่อหรือไม่?', importJson);
 
     if (exportXlsxEl) {
         exportXlsxEl.addEventListener('click', function () {
