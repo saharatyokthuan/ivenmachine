@@ -45,6 +45,8 @@ const FIELD_LABELS = [
 
 const DROP_TEST_VALUES = ['Passed', 'Not tested', 'Failed'];
 
+const STORAGE_KEY = 'vending_machine_state_v1';
+
 /* ============================================= */
 /* Application State (สถานะของแอปพลิเคชัน) */
 /* ============================================= */
@@ -1227,6 +1229,7 @@ function importTxt(file) {
 
             AppState.slotsData = parsed.slots;
             renderAll();
+            saveState();
             showNotification('นำเข้าไฟล์ .txt สำเร็จ (อัปเดตข้อมูลเครื่อง เหรียญ และช่องขาย)', NOTIFICATION_TYPES.SUCCESS);
         } catch (error) {
             showNotification('เกิดข้อผิดพลาดในการอ่านไฟล์ .txt: ' + error.message, NOTIFICATION_TYPES.ERROR);
@@ -1288,6 +1291,7 @@ function importXlsx(file) {
             }
             if (imported) {
                 renderAll();
+                saveState();
                 showNotification('นำเข้าไฟล์ .xlsx สำเร็จ', NOTIFICATION_TYPES.SUCCESS);
             } else {
                 showNotification('ไม่พบข้อมูลที่สามารถนำเข้าได้ในไฟล์ .xlsx', NOTIFICATION_TYPES.WARNING);
@@ -1325,12 +1329,14 @@ function importCsv(file) {
             if (header.indexOf('slot') !== -1 || header.indexOf('Slot') !== -1) {
                 AppState.slotsData = parseSlotsSheet(dataRows);
                 renderAll();
+                saveState();
                 showNotification('นำเข้าไฟล์ .csv (Slots) สำเร็จ', NOTIFICATION_TYPES.SUCCESS);
                 return;
             }
             if (header.indexOf('Master Product ID') !== -1) {
                 AppState.productsData = parseProductsSheet(dataRows);
                 renderAll();
+                saveState();
                 showNotification('นำเข้าไฟล์ .csv (Products) สำเร็จ', NOTIFICATION_TYPES.SUCCESS);
                 return;
             }
@@ -1369,6 +1375,7 @@ function importJson(file) {
             }
             if (imported) {
                 renderAll();
+                saveState();
                 showNotification('นำเข้าไฟล์ .json สำเร็จ', NOTIFICATION_TYPES.SUCCESS);
             } else {
                 showNotification('ไม่พบข้อมูลที่สามารถนำเข้าได้ในไฟล์ .json', NOTIFICATION_TYPES.WARNING);
@@ -1667,6 +1674,76 @@ function resetFilters() {
 }
 
 /* ============================================= */
+/* Persistence (บันทึก/กู้คืนข้อมูลด้วย localStorage) */
+/* ============================================= */
+function saveState() {
+    try {
+        const payload = {
+            version: 1,
+            savedAt: formatDateTime(new Date()),
+            machineData: AppState.machineData,
+            slotsData: AppState.slotsData,
+            productsData: AppState.productsData,
+            pmaData: AppState.pmaData
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        return true;
+    } catch (error) {
+        // อาจเกิดจาก localStorage เต็ม (QuotaExceededError) หรือถูกปิดการใช้งาน
+        console.error('saveState error:', error);
+        return false;
+    }
+}
+
+function loadState() {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) {
+            return null;
+        }
+        const data = JSON.parse(raw);
+        if (!data || typeof data !== 'object') {
+            return null;
+        }
+        return data;
+    } catch (error) {
+        console.error('loadState error:', error);
+        return null;
+    }
+}
+
+function applyState(data) {
+    let applied = false;
+    if (data.machineData && typeof data.machineData === 'object') {
+        AppState.machineData = data.machineData;
+        applied = true;
+    }
+    ['slotsData', 'productsData', 'pmaData'].forEach(function (key) {
+        if (Array.isArray(data[key])) {
+            AppState[key] = data[key];
+            applied = true;
+        }
+    });
+    return applied;
+}
+
+function clearStoredState() {
+    try {
+        localStorage.removeItem(STORAGE_KEY);
+    } catch (error) {
+        console.error('clearStoredState error:', error);
+    }
+}
+
+function resetData() {
+    clearStoredState();
+    loadDefaultData();
+    resetFilters();
+    renderAll();
+    showNotification('คืนค่าข้อมูลเริ่มต้นเรียบร้อยแล้ว', NOTIFICATION_TYPES.INFO);
+}
+
+/* ============================================= */
 /* Event Binding (ผูกเหตุการณ์) */
 /* ============================================= */
 function bindEvents() {
@@ -1684,6 +1761,7 @@ function bindEvents() {
     const categoryEl = $('filter-category');
     const statusEl = $('filter-status');
     const clearFiltersEl = $('clear-filters');
+    const resetDataEl = $('reset-data');
 
     if (importTxtEl) {
         importTxtEl.addEventListener('change', function (e) {
@@ -1790,6 +1868,14 @@ function bindEvents() {
             resetFilters();
         });
     }
+
+    if (resetDataEl) {
+        resetDataEl.addEventListener('click', function () {
+            showConfirm('ต้องการล้างข้อมูลที่นำเข้าและคืนค่าเริ่มต้นทั้งหมดหรือไม่?', function () {
+                resetData();
+            });
+        });
+    }
 }
 
 /* ============================================= */
@@ -1803,10 +1889,16 @@ function loadDefaultData() {
 }
 
 function init() {
-    loadDefaultData();
     bindEvents();
-    renderAll();
-    showNotification('โหลดข้อมูลเริ่มต้นสำเร็จ พร้อมใช้งาน', NOTIFICATION_TYPES.SUCCESS);
+    const stored = loadState();
+    if (stored && applyState(stored)) {
+        renderAll();
+        showNotification('กู้คืนข้อมูลที่บันทึกไว้ล่าสุดแล้ว', NOTIFICATION_TYPES.INFO);
+    } else {
+        loadDefaultData();
+        renderAll();
+        showNotification('โหลดข้อมูลเริ่มต้นสำเร็จ พร้อมใช้งาน', NOTIFICATION_TYPES.SUCCESS);
+    }
 }
 
 document.addEventListener('DOMContentLoaded', function () {
