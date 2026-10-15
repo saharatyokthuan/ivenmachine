@@ -810,6 +810,11 @@ function renderCategoryOptions() {
         options.push('<option value="' + escapeHtml(cat) + '">' + escapeHtml(cat) + '</option>');
     });
     select.innerHTML = options.join('');
+    // หากหมวดหมู่ที่เลือกไว้ไม่มีอยู่ในข้อมูลปัจจุบัน ให้ล้างตัวกรองทิ้ง
+    // เพื่อไม่ให้ตารางถูกกรองด้วยหมวดที่ไม่มีแล้ว (dropdown โชว์ "ทุกหมวดหมู่" แต่ผลลัพธ์ว่าง)
+    if (AppState.filters.category && !seen[AppState.filters.category]) {
+        AppState.filters.category = '';
+    }
     select.value = AppState.filters.category || '';
 }
 
@@ -1111,7 +1116,6 @@ function parseVendingTxt(text) {
                 slot: pendingSlot || '',
                 floor: currentFloor,
                 name: nameMatch[2].trim(),
-                qtyPerSlot: parseInt(nameMatch[1], 10),
                 price: 0,
                 stock: 0,
                 max: MAX_STOCK_PER_SLOT,
@@ -1413,7 +1417,6 @@ function buildRefillSheetData() {
         'หลังเติม'
     ];
     const rows = [header];
-    const refillInfo = [];
 
     slots.forEach(function (slot) {
         if (!slot.slot || !slot.name) {
@@ -1441,15 +1444,10 @@ function buildRefillSheetData() {
             '',
             ''
         ]);
-        refillInfo.push({
-            name: slot.name,
-            masterId: masterId
-        });
     });
 
     return {
-        rows: rows,
-        refillInfo: refillInfo
+        rows: rows
     };
 }
 
