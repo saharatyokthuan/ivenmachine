@@ -68,11 +68,11 @@ const AppState = {
 /* Default Data (ข้อมูลเริ่มต้น) */
 /* ============================================= */
 const DEFAULT_MACHINE_DATA = {
-    activationCode: 'bmdvsg',
-    province: 'สุราษฎร์ธานี',
-    district: 'เกาะสมุย',
-    gm: 'คุณฤกษ์ ปักเขาตะนง',
-    area: 'สามแยกแหลมดิน 1',
+    activationCode: '',
+    province: '',
+    district: '',
+    gm: '',
+    area: '',
     status: {
         online: 'ออนไลน์',
         stock: '50 / 50',
